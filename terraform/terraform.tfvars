@@ -11,7 +11,7 @@ storage_account_name = "durgaw8sa260915"
 aks_cluster_name = "durgaw8aks260915"
 aks_dns_prefix   = "durgaw8aks260915"
 
-aks_node_count   = 3
+aks_node_count   = 2
 aks_node_vm_size = "Standard_D2s_v3"
 
 environment = "development"

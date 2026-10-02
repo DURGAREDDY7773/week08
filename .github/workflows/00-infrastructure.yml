@@ -1,0 +1,74 @@
+name: 00 - Infrastructure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: week08-terraform
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: Validate and Plan Infrastructure
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Terraform Azure authentication
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          credentials = json.loads(os.environ["AZURE_CREDENTIALS"])
+          mapping = {
+              "ARM_CLIENT_ID": "clientId",
+              "ARM_CLIENT_SECRET": "clientSecret",
+              "ARM_TENANT_ID": "tenantId",
+              "ARM_SUBSCRIPTION_ID": "subscriptionId",
+          }
+
+          values = {}
+          for variable, field in mapping.items():
+              value = credentials.get(field)
+              if not isinstance(value, str) or not value or "\n" in value or "\r" in value:
+                  raise SystemExit(f"Missing or invalid credential field: {field}")
+              print(f"::add-mask::{value}", flush=True)
+              values[variable] = value
+
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              for variable, value in values.items():
+                  output.write(f"{variable}={value}\n")
+          PY
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+
+      - name: Initialise Terraform
+        run: terraform init -input=false
+
+      - name: Validate Terraform
+        run: terraform validate
+
+      - name: Plan infrastructure
+        run: terraform plan -input=false -no-color
