@@ -2,6 +2,12 @@ name: 00 - Infrastructure
 
 on:
   workflow_dispatch:
+    inputs:
+      apply:
+        description: "Create or update Azure infrastructure"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -72,4 +78,8 @@ jobs:
         run: terraform validate
 
       - name: Plan infrastructure
-        run: terraform plan -input=false -no-color
+        run: terraform plan -input=false -no-color -out=pipeline.tfplan
+
+      - name: Apply infrastructure
+        if: ${{ inputs.apply }}
+        run: terraform apply -input=false -no-color pipeline.tfplan
